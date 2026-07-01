@@ -226,6 +226,29 @@ The remaining fields from your list belong either on the PHP implementation side
 
 ---
 
+## On the suggested working method
+
+Your seven-step flow is the right idea. We would adjust the order of two steps and simplify the test phase.
+
+Our flow:
+
+```
+1. Feature start  → API contract update goes out immediately
+                    elevenlive implements the PHP endpoint in parallel
+2. UI development → Jessy builds freely in the frontend repo, no PRs per change
+3. Feature done   → screenshots + smoke tests delivered
+4. Review         → elevenlive gives sign-off (Abnahme)
+5. Deploy         → elevenlive deploys PHP + React build to cPanel
+```
+
+The key difference: the API contract update goes out **at the start**, not after the prototype is done. That lets both sides work in parallel — you implement the endpoint while the UI is being built, rather than waiting for a finished prototype before PHP work begins.
+
+On end-to-end tests: a true E2E test across two separate repos requires shared infrastructure — a staging server, a test runner, Jenkins or similar. That is disproportionate overhead for this project at this stage. Our Playwright smoke tests run locally against mock data and cover the meaningful acceptance criteria: correct rendering at all viewports, no overflow, visible focus states, permission-limited views, light mode. That is sufficient for sign-off.
+
+E2E testing against a live PHP backend only makes sense if we share a staging environment. That can be a future discussion once the first features are deployed and stable.
+
+---
+
 ## What we are not incorporating yet
 
 - Security-contract YAML format per endpoint: we will move toward this incrementally, starting with the highest-risk endpoints (admin mutations). A full YAML contract for every endpoint before any UI work is built is too much upfront documentation cost for this stage.
