@@ -11,10 +11,96 @@ The React frontend (`realMoebius/sonneark-frontend`) must not assume anything be
 
 - Base path: `/api/`
 - All responses: `Content-Type: application/json`
-- Authentication: PHP session cookie (`HttpOnly`, `Secure`, `SameSite=Strict`)
+- Authentication: PHP session cookie (details below)
 - Error shape: `{ "error": "human-readable message", "code": "MACHINE_CODE" }`
 - Dates: ISO 8601 strings (`2026-07-01T18:00:00Z`)
 - Permissions: enforced server-side on every endpoint — hiding a button in React is not a permission check
+
+---
+
+## Authentication Model
+
+### Session cookie
+
+Authentication uses PHP sessions. No Basic Auth. No JWT for MVP.
+
+```
+POST /api/auth/login
+  → PHP verifies credentials
+  → PHP starts a new session (session_regenerate_id after login)
+  → PHP sets a session cookie on the response
+  → All subsequent requests include the cookie automatically
+POST /api/auth/logout
+  → PHP destroys the session server-side
+  → Cookie is cleared
+```
+
+The session cookie must be configured as:
+
+```
+HttpOnly  = true    // JavaScript cannot read the cookie — prevents XSS token theft
+Secure    = true    // Cookie is only sent over HTTPS — never over plain HTTP
+SameSite  = Strict  // Cookie is not sent on cross-site requests — prevents CSRF
+Path      = /api/   // Scope the cookie to the API path
+```
+
+### Password transmission
+
+The password is sent as **plain text inside the HTTPS request body**. This is correct and intentional.
+
+- TLS encrypts the entire request body end-to-end. No one between the browser and the server can read it.
+- The server receives the plain password and immediately compares it against a stored hash using `password_verify()`.
+- The plain password is never logged, never stored, never forwarded.
+
+Do **not** hash the password client-side before sending. A client-side hash becomes the password — if it is ever leaked, an attacker can replay it without knowing the original password (pass-the-hash attack). TLS is the correct layer for protecting credentials in transit.
+
+### Password storage
+
+The server must store passwords using a strong adaptive hash:
+
+- **Recommended:** `password_hash($password, PASSWORD_ARGON2ID)` (PHP 7.3+)
+- **Acceptable:** `password_hash($password, PASSWORD_BCRYPT)` with cost ≥ 12
+- **Never:** MD5, SHA-1, SHA-256, plain text, reversible encryption
+
+### CSRF protection
+
+Session cookies alone are not sufficient for state-changing requests. Every `POST`, `PATCH`, `PUT` and `DELETE` endpoint must require a CSRF token.
+
+```
+GET /api/auth/csrf-token
+  → Response: { "csrf_token": "random-unpredictable-value" }
+
+All state-changing requests:
+  → Header: X-CSRF-Token: <token>  (or as a body field)
+  → PHP validates the token before processing the request
+  → 403 CSRF_INVALID if missing or wrong
+```
+
+The CSRF token is tied to the session. It changes on login and logout.
+
+### Rate limiting
+
+All auth endpoints must apply rate limiting server-side:
+
+| Endpoint | Limit |
+|---|---|
+| `POST /api/auth/login` | 5 attempts per 15 minutes per IP |
+| `POST /api/auth/register` | 3 registrations per hour per IP |
+| Any endpoint | Return `429 Too Many Requests` with `Retry-After` header |
+
+### Generic error messages
+
+Auth errors must never reveal whether an account exists:
+
+```
+// Wrong — reveals that the username exists:
+"Password incorrect for user jessy"
+
+// Correct — same message for wrong username and wrong password:
+"Invalid username or password"
+```
+
+---
 
 ---
 
