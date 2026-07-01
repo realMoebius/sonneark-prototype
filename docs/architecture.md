@@ -1,29 +1,48 @@
 # Architecture
 
+## Repository Split
+
+Two repositories, one hard boundary.
+
+| Repository | Owner | Responsibility |
+|---|---|---|
+| `elevenlive/sonneark-website` | elevenlive | PHP API, MySQL, flat-file storage, auth, all server-side logic |
+| `realMoebius/sonneark-frontend` | Jessy | React (Vite), UI components, OpenAPI contract, mock layer |
+
+elevenlive develops the PHP layer autonomously — he owns the hosting, the database, the file structure. Jessy develops the React layer against the API contract and mock data. Neither side needs access to the other's internals.
+
+The OpenAPI contract (`docs/api-contract.yaml`) lives in the frontend repo and is the single source of truth for the boundary between them.
+
+---
+
 ## Stack
 
-| Layer | Technology | Hosting | Cost |
+| Layer | Technology | Hosting | Owner |
 |---|---|---|---|
-| Frontend | React (Vite) — static build | cPanel (existing) | $0 |
-| Backend | PHP REST API | cPanel (existing) | $0 |
-| Database | MySQL | cPanel (existing) | $0 |
-| Auth | PHP sessions + JWT | cPanel (existing) | $0 |
-| CI/CD | GitHub Actions (build + deploy) | GitHub | $0 |
-| Domain | sonneark.eu | existing | $0 |
+| Frontend | React (Vite) — static build | cPanel (existing) | Jessy |
+| API Contract | OpenAPI 3.1 YAML | frontend repo | Jessy |
+| Backend | PHP REST API | cPanel (existing) | elevenlive |
+| Storage | MySQL + flat-file (hybrid) | cPanel (existing) | elevenlive |
+| Auth | PHP sessions | cPanel (existing) | elevenlive |
+| CI/CD | GitHub Actions (build) | GitHub | Jessy |
+| Domain | sonneark.eu | existing | elevenlive |
 
 No new hosting. No new services. Everything runs on elevenlive's existing cPanel.
+
+---
 
 ## How it works
 
 ```
-GitHub repo (React + PHP)
+Frontend repo (React)
   → push to main
   → GitHub Actions builds React to /dist
-  → deploys via git to cPanel
+  → elevenlive deploys /dist to cPanel (reviewed, gated)
   → cPanel serves: index.html (React SPA) + /api/* (PHP)
+
+React → fetch /api/* → PHP reads MySQL / flat-files → JSON response
 ```
 
-React talks to the PHP API via fetch. PHP reads and writes MySQL.
 The domain and nameservers stay exactly as they are.
 
 ---
@@ -36,23 +55,53 @@ graph TD
         Browser["📱 Member's device\n(browser)"]
     end
 
-    subgraph Server["🖥️ cPanel Server — controlled zone"]
-        PHP["PHP API\n/api/*"]
-        Config["🔑 config.php\nDB credentials\nnever in git, never public"]
-        MySQL[("🗄️ MySQL\naccessible on localhost only\nnot reachable from internet")]
+    subgraph Frontend["⚛️ Frontend Repo — Jessy"]
+        React["React App\n(static build)"]
+        Contract["📄 OpenAPI Contract\napi-contract.yaml"]
+        Mocks["🧪 Mock layer\n(dev only)"]
     end
 
-    Browser <-->|"HTTPS — all traffic encrypted"| PHP
+    subgraph Server["🖥️ cPanel Server — elevenlive"]
+        PHP["PHP API\n/api/*"]
+        Config["🔑 config.php\nDB credentials\nnever in git, never public"]
+        FlatFiles["📁 Flat-file storage\nauthoitative until\nmigration proof"]
+        MySQL[("🗄️ MySQL\naccessible on localhost only")]
+    end
+
+    Browser <-->|"HTTPS"| React
+    React <-->|"fetch /api/*\nfollows contract"| PHP
     PHP -->|reads at startup| Config
-    PHP <-->|"localhost — internal only\nno network hop"| MySQL
+    PHP <-->|"localhost only"| MySQL
+    PHP <-->|file read/write| FlatFiles
+    Contract -.->|defines| PHP
+    Contract -.->|fulfilled by| Mocks
 
     style Internet fill:#1a0000,stroke:#ff4444,color:#fff
+    style Frontend fill:#001020,stroke:#61dafb,color:#fff
     style Server fill:#001a00,stroke:#44ff44,color:#fff
     style Config fill:#1a1a00,stroke:#ffaa00,color:#fff
 ```
 
-The database has no public port. It only answers to processes running on the same server.
-An attacker on the internet has no path to MySQL directly — the only way in is through the PHP API.
+The database has no public port. Flat-file data never leaves the server. The only path from the internet to data is through the PHP API.
+
+---
+
+## Storage model
+
+The existing site uses a hybrid of flat-file storage and MySQL. Both must be respected.
+
+| Data type | Storage | Why |
+|---|---|---|
+| Guide content | Flat-file (JSON/Markdown) | Existing authority — do not replace without migration proof |
+| Site configuration | Flat-file (PHP/JSON) | Hosting-level, never in git |
+| Translations | Flat-file or MySQL | Verify in Phase 0 |
+| User accounts | MySQL (likely) | Verify in Phase 0 |
+| Forum posts | MySQL | Structured queries needed |
+| Notifications | MySQL | New feature, built clean |
+| Audit log | MySQL | New feature, built clean |
+| Event schedule | Flat-file → MySQL | Officers need to edit; migrate when UI is ready |
+
+**Rule:** flat-file data is not casually moved to MySQL. Any migration needs a versioned script, a backup, a rollback plan, and elevenlive approval.
 
 ---
 
@@ -77,12 +126,12 @@ graph TD
 
 | # | Attack | Defense |
 |---|---|---|
-| ② | Man-in-the-middle — intercept traffic between member and server | HTTPS/TLS encrypts all traffic. Intercepted packets are unreadable without the server's private key. |
-| ③ | Direct database connection from the internet | MySQL is bound to localhost only. No port is open to the internet. There is nothing to connect to. |
-| ④ | API call without a valid session | PHP checks the session token on every request before touching the database. No token = no data. |
-| ⑤ | Reading data the member is not allowed to see | PHP checks the member's role and capabilities before executing any query. Permission is enforced in code, not just in the UI. |
-| ⑥ | SQL injection — sending malicious input to manipulate a query | All queries use PDO prepared statements. User input is never concatenated into SQL. |
-| ⑦ | Stealing database credentials from the source code | Credentials live in `private/config.php`, which is outside the public web root and excluded from git. GitHub never sees them. |
+| ② | Man-in-the-middle | HTTPS/TLS encrypts all traffic. |
+| ③ | Direct database connection from the internet | MySQL bound to localhost only. No open port. |
+| ④ | API call without a valid session | PHP checks session on every request. No token = no data. |
+| ⑤ | Reading data the member is not permitted to see | PHP checks role and capabilities before any query. |
+| ⑥ | SQL injection | All queries use PDO prepared statements. |
+| ⑦ | Credential theft from source code | Credentials in `private/config.php`, outside web root, excluded from git. |
 
 ---
 
@@ -100,13 +149,13 @@ sequenceDiagram
     TLS->>P: Decrypted on server only
     P->>P: Validate session token
     alt Invalid or missing session
-        P-->>M: 401 Unauthorized — no data returned
+        P-->>M: 401 Unauthorized
     else Valid session
         P->>P: Check role / capability
         alt Insufficient permission
             P-->>M: 403 Forbidden
         else Permission granted
-            P->>D: Prepared statement\n(parameterised, no raw input)
+            P->>D: Prepared statement
             D-->>P: Result rows
             P-->>TLS: JSON response
             TLS-->>M: Encrypted response
@@ -114,33 +163,15 @@ sequenceDiagram
     end
 ```
 
-Data never leaves the server unencrypted. A member only receives the data their role permits. The database is never queried with raw user input.
-
 ---
 
 ## Principles
 
 - Mobile-first — the game is played on mobile, the website must work on mobile in under 3 seconds
+- Hard API boundary — frontend and backend are independently deployable
+- Flat-file first — existing data is not moved to MySQL without proof and rollback
 - Ship working software — 80% done and deployed beats 100% done and waiting
-- Backlog over bloat — new ideas go into the backlog, not the current sprint
 - Manual before automated — prove demand before building pipelines
-
-## What carries over
-
-- Existing MySQL database and schema
-- PHP for all backend logic and API routes
-- cPanel git deployment (already in place)
-- Domain and nameservers untouched
-- Design system (site.css) as reference for React components
-- Guide content — migrated as structured data
-- Multilingual architecture — preserved
-
-## What changes
-
-- Frontend becomes React instead of PHP-rendered HTML
-- No more mixed PHP/HTML templates — clean API separation
-- TypeScript on the frontend for type safety
-- GitHub Actions automates the build step before git deployment
 
 ## Future cost threshold
 
