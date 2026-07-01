@@ -15,6 +15,7 @@ The React frontend (`realMoebius/sonneark-frontend`) must not assume anything be
 - Error shape: `{ "error": "human-readable message", "code": "MACHINE_CODE" }`
 - Dates: ISO 8601 strings (`2026-07-01T18:00:00Z`)
 - Permissions: enforced server-side on every endpoint — hiding a button in React is not a permission check
+- Security block: mutation and high-risk endpoints include a `Security:` annotation with four fields — `capability` (what PHP must check), `scope` (who can see the data), `audit` (whether the action is logged), `fail_closed` (whether the request is rejected if a safety check cannot complete). Simple read endpoints do not carry this block.
 
 ---
 
@@ -306,6 +307,9 @@ Response: { "poll": Poll }
 Errors:   400 ALREADY_VOTED (if vote changes not allowed)
           403 POLL_CLOSED
           404 NOT_FOUND
+Security: capability   — none (any authenticated member)
+          scope        — guild
+          audit        — no
 ```
 
 ### Poll
@@ -347,6 +351,9 @@ Saves the user's current resource numbers to their profile.
 ```
 Request:  { "speedups": number, "ap": number, "fragments": number }
 Response: { "saved": true }
+Security: capability   — none (own data only, user can only write their own profile)
+          scope        — private
+          audit        — no
 ```
 
 ### Recommendation
@@ -365,29 +372,35 @@ Response: { "saved": true }
 
 ### `GET /api/admin/users`
 
-Requires: `manage_users` capability.
-
 ```
 Response: { "users": User[] }
+Security: capability   — manage_users
+          scope        — admin
+          audit        — no
 ```
 
 ### `PATCH /api/admin/users/:id`
-
-Requires: `manage_roles` capability.
 
 ```
 Request:  { "role": string, "capabilities": string[] }
 Response: { "user": User }
 Errors:   403 FORBIDDEN
           409 LAST_OWNER_PROTECTED
+Security: capability   — manage_roles
+          scope        — admin
+          audit        — yes (action: role_change, logged with actor + target + diff)
+          fail_closed  — yes: reject mutation if audit write fails
+          constraints  — actor cannot escalate own role or capabilities
+                       — Owner role cannot be removed from the last owner
 ```
 
 ### `GET /api/admin/audit-log`
 
-Requires: `owner` role.
-
 ```
 Response: { "entries": AuditEntry[] }
+Security: capability   — none (owner role required, no delegation)
+          scope        — owner
+          audit        — no
 ```
 
 ### AuditEntry

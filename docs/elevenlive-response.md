@@ -122,6 +122,16 @@ From your feedback, we are adding to the roadmap:
 
 ---
 
+## On the API contract format
+
+Your security-contract proposal asks for 19 fields per endpoint (storage authority, cache policy, test fixtures, direct-route test, fail-closed rule, etc.).
+
+We have updated the contract with the four fields that are genuinely useful at this stage: `capability`, `scope`, `audit` and `fail_closed`. These appear as a `Security:` block on mutation and admin endpoints only. Simple read endpoints (GET /api/events, GET /api/guide, etc.) do not carry this block — the information would be obvious and repetitive.
+
+The remaining fields from your list belong either on the PHP implementation side (storage authority, cache policy) or in a separate test plan document (fixtures, direct-route tests). Including them in the API contract would make it harder to read and maintain without adding value for the frontend developer consuming it.
+
+---
+
 ## What we are not incorporating yet
 
 - Security-contract YAML format per endpoint: we will move toward this incrementally, starting with the highest-risk endpoints (admin mutations). A full YAML contract for every endpoint before any UI work is built is too much upfront documentation cost for this stage.
