@@ -122,6 +122,27 @@ From your feedback, we are adding to the roadmap:
 
 ---
 
+## On Frontend / API Integration
+
+We agree with the same-origin production model. We are building exactly that.
+
+```
+sonneark.eu
+  /          React static files (Jessy's compiled build)
+  /api/*     PHP backend (elevenlive)
+```
+
+Your deployment process for a release is two steps:
+
+1. Deploy your PHP backend to the cPanel server as usual.
+2. Deploy Jessy's compiled React build (`/dist`) as static files to the web root.
+
+Both live on the same server under the same domain. Session cookies, CSRF and permissions work without any cross-origin complexity.
+
+The GitHub Pages prototype (`realmoebius.github.io/sonneark-prototype`) is for development and review only — it runs against mock data and never talks to your PHP API. It is not the production setup.
+
+---
+
 ## On the API contract format
 
 Your security-contract proposal asks for 19 fields per endpoint (storage authority, cache policy, test fixtures, direct-route test, fail-closed rule, etc.).
