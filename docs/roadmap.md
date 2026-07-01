@@ -3,32 +3,15 @@
 ## Overview
 
 ```mermaid
-gantt
-    dateFormat  YYYY-MM
-    title SonneARK Platform — Phases
+graph LR
+    P1["Phase 1\nFoundation"] --> P2["Phase 2\nMember Layer"]
+    P2 --> P3["Phase 3\nOfficer Tools"]
+    P3 --> P4["Phase 4\nGame Intel\n(if needed)"]
 
-    section Phase 1 — Foundation
-    Setup & Architecture     :p1a, 2026-07, 2w
-    UI Redesign              :p1f, after p1a, 6w
-    Guide (mobile-optimized) :p1b, after p1a, 3w
-    Operations & Events      :p1c, after p1a, 3w
-    Login & Auth             :p1d, after p1b, 3w
-    Roles & Capabilities     :p1e, after p1d, 2w
-
-    section Phase 2 — Member Layer
-    Profiles & Bookmarks     :p2a, after p1e, 3w
-    Guide Comments           :p2b, after p2a, 2w
-    Notifications            :p2c, after p2b, 2w
-    Polls                    :p2d, after p2a, 2w
-
-    section Phase 3 — Officer Tools
-    Admin Interface          :p3a, after p2c, 4w
-    Readiness Calculator     :p3b, after p3a, 2w
-    Forum Basics             :p3c, after p3a, 3w
-
-    section Phase 4 — Intel (if needed)
-    Manual score/ranking entry  :p4a, after p3c, 3w
-    Evaluate screenshot OCR     :p4b, after p4a, 4w
+    style P1 fill:#0b1020,color:#fff,stroke:#61dafb
+    style P2 fill:#0b1020,color:#fff,stroke:#61dafb
+    style P3 fill:#0b1020,color:#fff,stroke:#61dafb
+    style P4 fill:#0b1020,color:#fff,stroke:#555
 ```
 
 ---
