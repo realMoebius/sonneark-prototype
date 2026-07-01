@@ -4,15 +4,27 @@
 
 | Layer | Technology | Hosting | Cost |
 |---|---|---|---|
-| Frontend | Next.js (React) | Vercel | $0 |
-| Backend | Next.js API Routes | Vercel Serverless | $0 |
-| Database | PostgreSQL | Supabase | $0 |
-| Auth | Supabase Auth | Supabase | $0 |
-| File Storage | Supabase Storage | Supabase | $0 |
-| CI/CD | GitHub Actions | GitHub | $0 |
+| Frontend | React (Vite) — static build | cPanel (existing) | $0 |
+| Backend | PHP REST API | cPanel (existing) | $0 |
+| Database | MySQL | cPanel (existing) | $0 |
+| Auth | PHP sessions + JWT | cPanel (existing) | $0 |
+| CI/CD | GitHub Actions (build + deploy) | GitHub | $0 |
 | Domain | sonneark.eu | existing | $0 |
 
-First real cost threshold: Supabase Pro ($25/month) when project has proven adoption.
+No new hosting. No new services. Everything runs on elevenlive's existing cPanel.
+
+## How it works
+
+```
+GitHub repo (React + PHP)
+  → push to main
+  → GitHub Actions builds React to /dist
+  → deploys via git to cPanel
+  → cPanel serves: index.html (React SPA) + /api/* (PHP)
+```
+
+React talks to the PHP API via fetch. PHP reads and writes MySQL. 
+The domain and nameservers stay exactly as they are.
 
 ## Principles
 
@@ -21,16 +33,27 @@ First real cost threshold: Supabase Pro ($25/month) when project has proven adop
 - Backlog over bloat — new ideas go into the backlog, not the current sprint
 - Manual before automated — prove demand before building pipelines
 
-## What this replaces
-
-- PHP + cPanel hosting → Vercel + Supabase
-- 3-repo separation → single repo with branch protection
-- Promotion packages → standard PR review
-- Complex Workbench governance → GitHub Issues + Milestones
-
 ## What carries over
 
-- Design system (site.css) — reused as CSS Modules or reference for Tailwind
-- Guide content — migrated as structured content
+- Existing MySQL database and schema
+- PHP for all backend logic and API routes
+- cPanel git deployment (already in place)
+- Domain and nameservers untouched
+- Design system (site.css) as reference for React components
+- Guide content — migrated as structured data
 - Multilingual architecture — preserved
-- Domain sonneark.eu — DNS pointed to Vercel
+
+## What changes
+
+- Frontend becomes React instead of PHP-rendered HTML
+- No more mixed PHP/HTML templates — clean API separation
+- TypeScript on the frontend for type safety
+- GitHub Actions automates the build step before git deployment
+
+## Future cost threshold
+
+Only if the project outgrows cPanel:
+- Vercel for React hosting ($0 → stays free longer)
+- Supabase for database ($25/month Pro, only if MySQL on cPanel becomes a bottleneck)
+
+These are not planned. They are escape hatches if needed.
