@@ -64,19 +64,13 @@ The server must store passwords using a strong adaptive hash:
 
 ### CSRF protection
 
-Session cookies alone are not sufficient for state-changing requests. Every `POST`, `PATCH`, `PUT` and `DELETE` endpoint must require a CSRF token.
+CSRF protection is provided by the `SameSite=Strict` cookie attribute — no separate CSRF token is required.
 
-```
-GET /api/auth/csrf-token
-  → Response: { "csrf_token": "random-unpredictable-value" }
+`SameSite=Strict` instructs the browser to never send the session cookie on cross-origin requests. A page on `evil.com` cannot trigger a state-changing request to `sonneark.eu/api/*` that carries the session cookie — the browser blocks it at the cookie level.
 
-All state-changing requests:
-  → Header: X-CSRF-Token: <token>  (or as a body field)
-  → PHP validates the token before processing the request
-  → 403 CSRF_INVALID if missing or wrong
-```
+This holds for `sonneark.eu` as a dedicated domain. A separate CSRF token would be redundant and would add unnecessary complexity: React would need to fetch a token before every mutation, store it, and include it in every request header.
 
-The CSRF token is tied to the session. It changes on login and logout.
+No `GET /api/auth/csrf-token` endpoint. No `X-CSRF-Token` header. `SameSite=Strict` is the control.
 
 ### Rate limiting
 
