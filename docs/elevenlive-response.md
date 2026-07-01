@@ -128,16 +128,70 @@ These are template decisions, not feature work. We will build them into the comp
 
 ---
 
+## On translation
+
+Translation in the full scope you describe — forum posts, comments, notifications, polls, event messages — requires a paid machine translation API (DeepL, Google Translate) and a review workflow. That is not free and not trivial to build correctly.
+
+Our approach:
+
+**Static UI text** (buttons, labels, navigation, error messages) uses standard i18n localisation files (`en.json`, `de.json`). This is free, built into React via i18next, and covers everything the interface says itself. EN and DE from day one, further languages added as files without code changes.
+
+**Guide content** is maintained manually in multiple language files. EN/DE first, as agreed.
+
+**User-generated dynamic content** (forum posts, comments, notifications, messages) is not automatically translated in the MVP. Members write in their language, others read it as-is. A translation workflow for dynamic content is a Phase 2+ feature — not something we can deliver for free at launch.
+
+---
+
+## On away status
+
+Already discussed as a field on the User object. It belongs in the User schema, not as a standalone feature. Proposed shape:
+
+```json
+"away": {
+  "enabled": true,
+  "from": "2026-07-20",
+  "until": "2026-08-15",
+  "note": "vacation"
+}
+```
+
+`away` is `null` when not active. Visible to officers and above, not public. The right place to agree on the full User schema is the discovery export's `MOCK_USERS.json` — away status is one field among several that we align there.
+
+---
+
+## On event data
+
+I already have structured data for all current recurring events (Commerce Guild Duel, Top 100, Operation Blackout, PvP rules, etc.). Event data belongs in the backend, served via `/api/events`, so officers can update timing and notes without a frontend deployment. I can provide the initial data as a JSON fixture for import.
+
+The Event DTO in the contract already covers the basics. The discovery export should confirm which fields already exist on your side so we can align the contract shape before implementation.
+
+---
+
+## On chat
+
+Too complex for the MVP. Chat needs moderation, message retention, translation, privacy controls and abuse handling — none of which are in place yet. Going to backlog.
+
+When the time comes, async private messages (a simple inbox, not real-time chat) are the more realistic first step. Polls and officer notes cover the immediate coordination needs in the meantime.
+
+---
+
+## On prototype feedback
+
+Your requested screenshots (mobile, tablet, desktop, focus state, light mode, permission-limited view) are reasonable acceptance criteria. We will implement these as smoke tests rather than manual screenshot sessions.
+
+For each feature slice, the promotion package will include automated browser tests (Playwright) that render the view at mobile, tablet and desktop viewports, verify no horizontal overflow, verify keyboard focus is visible, verify the light mode variant renders, and verify a permission-limited user sees the correct restricted state. Reproducible evidence without manual screenshot work on every iteration.
+
+---
+
 ## Roadmap additions we are incorporating
 
-From your feedback, we are adding to the roadmap:
+- All-device support — inherent to React, no extra work; smoke tests provide the evidence
+- Away status — field on User object, schema agreed via discovery export
+- All-events framework — Duel and Top 100 as templates, not the whole model; initial data provided by Jessy as fixture
+- Forum, suggestions endpoints — added to API contract
+- Chat — backlog; async inbox as future alternative
 
-- All-device support (mobile, tablet, desktop, keyboard navigation, zoom) — not only mobile-first
-- Away / absence status (member self-marks, officer-visible, auto-expiry)
-- All-events framework (Duel and Top 100 as templates, not the whole model)
-- Extended translation scope (forum posts, notifications, not only guide text)
-- Forum, suggestions, translation workflow endpoints added to the API contract
-- Chat: acknowledged, deferred until after forum/moderation/notifications are stable
+Translation scope: static UI text only in MVP. Dynamic content translation is Phase 2+.
 
 ---
 
