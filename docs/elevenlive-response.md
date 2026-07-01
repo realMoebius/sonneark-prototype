@@ -109,6 +109,25 @@ The only thing we want to confirm is the PHP-as-pure-API question above, because
 
 ---
 
+## On all-device support and accessibility
+
+**All-device support** is not extra work with React — it is the default. A React app built with standard CSS (flexbox, grid, relative units) renders correctly on any screen size without separate mobile or desktop builds. The prototype already demonstrates this. For device testing, we use browser DevTools device emulation (free, built into every browser) and our own devices for manual checks. Paid cross-browser testing services are not necessary for a guild platform at this stage.
+
+**Accessibility** is something we want to get right from the start, not bolt on later. The European Accessibility Act (EAA) has been in force since June 2025 and applies to private-sector digital services. WCAG 2.1 AA is the relevant standard.
+
+The good news: accessibility is almost free if it goes into the component templates from day one. What this means in practice:
+
+- Semantic HTML throughout (`<nav>`, `<main>`, `<article>`, `<button>` — never `<div>` where a real element fits)
+- Visible keyboard focus states on every interactive element
+- Colour contrast at WCAG AA minimum
+- `aria-label` on icon-only controls
+- Alt text on images
+- Logical heading hierarchy
+
+These are template decisions, not feature work. We will build them into the component library from the first commit. Screen reader compatibility follows naturally from correct semantic HTML — no separate effort required.
+
+---
+
 ## Roadmap additions we are incorporating
 
 From your feedback, we are adding to the roadmap:
